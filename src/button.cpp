@@ -4,6 +4,19 @@
 #include "esp32-hal-log.h"
 #include "FreeRTOS.h"
 #include "freertos/timers.h"
+
+// Will the single press event happen IMMEDIATELY, ignoring possible double click
+// If set to 0, when user do a double click the lib will only fire a double event.
+// However the single click will also get a delay of DoubleClickThreshold
+//
+// If set to 1 like -DFIRE_ONE_IMMEDIATELY=1, when user do a double click the lib will 
+// fire a SINGLE AND double event
+
+// 懒得改逻辑了，那就通过FIRE_ONE_IMMEDIATELY来当成无视double的方式
+#ifndef FIRE_ONE_IMMEDIATELY
+#define FIRE_ONE_IMMEDIATELY 0
+#endif
+
 button_setup_t buttonDefaultSetup = {};
 button_config_t buttonDefaultConfig = {};
 TickSource ButtonTickSource = nullptr;
@@ -139,7 +152,9 @@ TickType_t button::_btn_Routine(TickType_t tick){
             
             if ((tick - press_start_tick)>btn_config.DebounceTicks){
                 //was pressing and exceed DebounceTicks
-                btn_fire_event({id,Pressed});// pressed, fire event
+                if (FIRE_ONE_IMMEDIATELY){
+                    btn_fire_event({id,Pressed});// pressed, fire event
+                }
                 state = FirstPressed;
                 press_fire_tick = tick;
                 return 1;
@@ -153,6 +168,7 @@ TickType_t button::_btn_Routine(TickType_t tick){
         break;
     case FirstPressed:
         if (nowState!=btn_config.PressState){
+            // todo after adding FIRE_ONE_IMMEDIATELY this logic is wrong.
             btn_fire_event({id,Released});// Released, fire event
             press_release_tick = tick;
             state = PressReleased;  //wait for possible double press within double threshold
@@ -217,6 +233,9 @@ TickType_t button::_btn_Routine(TickType_t tick){
                 // not pressing for too long, no longer any double
                 // release fired last release
                 // ESP_LOGD(TAG,"Double Fail at tick %d with press_release_tick %d",tick,press_release_tick);
+                if (!FIRE_ONE_IMMEDIATELY){
+                    btn_fire_event({id,Pressed});
+                }
                 state = Init;
                 return 1;
             }
