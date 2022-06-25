@@ -2,7 +2,7 @@
 
 #include "button.h"
 #include "esp32-hal-log.h"
-#include "FreeRTOS.h"
+#include <freertos/FreeRTOS.h>
 #include "freertos/timers.h"
 
 // Will the single press event happen IMMEDIATELY, ignoring possible double click
